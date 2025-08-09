@@ -3,6 +3,7 @@ import requests
 from datetime import datetime
 from podcastfy.client import generate_podcast
 from dotenv import load_dotenv
+import traceback
 
 # Load environment variables
 load_dotenv()
@@ -11,6 +12,7 @@ def get_reddit_posts(subreddit, limit=3, time_filter="day"):
     """
     Fetch top posts from a subreddit
     """
+    print(f"Fetching posts from subreddit: r/{subreddit}")
     url = f"https://www.reddit.com/r/{subreddit}/top/.json?limit={limit}&t={time_filter}"
     headers = {'User-agent': 'daily-podcast-bot'}
     response = requests.get(url, headers=headers)
@@ -26,17 +28,23 @@ def get_reddit_posts(subreddit, limit=3, time_filter="day"):
                 'selftext': post_data.get('selftext', ''),
                 'author': post_data['author']
             })
+        print(f"Successfully fetched {len(posts)} posts.")
         return posts
     else:
         print(f"Error fetching posts: {response.status_code}")
+        print(f"Response content: {response.text}")
         return []
 
 def generate_daily_podcast():
     """
     Generate a daily podcast from top Reddit posts
     """
+    print("--- Starting Podcast Generation ---")
+    print(f"Current working directory: {os.getcwd()}")
+
     # Get top posts from subreddit
     subreddit = os.getenv('SUBREDDIT', 'technology')
+    print(f"Target subreddit: {subreddit}")
     posts = get_reddit_posts(subreddit)
 
     if not posts:
@@ -44,6 +52,7 @@ def generate_daily_podcast():
         return
 
     # Create a transcript from the posts
+    print("Creating transcript...")
     transcript = f"Welcome to the Daily {subreddit.capitalize()} Podcast!\n\n"
     transcript += f"Today is {datetime.now().strftime('%B %d, %Y')}.\n\n"
 
@@ -55,27 +64,39 @@ def generate_daily_podcast():
         transcript += f"You can read more at: {post['url']}\n\n"
 
     transcript += "Thanks for listening to the Daily Podcast. Join us tomorrow for more updates!"
+    print(f"Transcript created. Length: {len(transcript)} characters.")
 
     # Save transcript to a file
     transcript_file = f"transcript_{datetime.now().strftime('%Y%m%d')}.txt"
+    print(f"Saving transcript to: {os.path.abspath(transcript_file)}")
     with open(transcript_file, 'w') as f:
         f.write(transcript)
+    print("Transcript saved successfully.")
 
     # Generate podcast from transcript
     output_file = f"daily_podcast_{datetime.now().strftime('%Y%m%d')}.mp3"
+    print(f"Attempting to generate podcast audio file at: {os.path.abspath(output_file)}")
 
     # Use Podcastfy to generate the podcast
     try:
         audio_file = generate_podcast(
             content=transcript,
             output_file=output_file,
-            voices=os.getenv('VOICE_TYPE', 'default')  # You can customize voices
+            voices=os.getenv('VOICE_TYPE', 'default')
         )
-        print(f"Podcast generated: {audio_file}")
-        return audio_file
+        if audio_file and os.path.exists(audio_file):
+            print(f"SUCCESS: Podcast generated and saved at: {audio_file}")
+            return audio_file
+        else:
+            print("FAILURE: generate_podcast function did not return a valid file path or the file was not created.")
+            return None
     except Exception as e:
-        print(f"Error generating podcast: {e}")
+        print(f"FATAL ERROR: An exception occurred while generating podcast: {e}")
+        print("--- Traceback ---")
+        traceback.print_exc()
+        print("-----------------")
         return None
 
 if __name__ == "__main__":
     generate_daily_podcast()
+    print("--- Podcast Generation Script Finished ---")
