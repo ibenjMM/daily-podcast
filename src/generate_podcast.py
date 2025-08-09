@@ -113,7 +113,7 @@ def generate_daily_podcast():
 
     try:
         audio_file = generate_podcast(
-            content=transcript,
+            text=transcript,
             output_file=output_file,
             voices=os.getenv('VOICE_TYPE', 'default')
         )
