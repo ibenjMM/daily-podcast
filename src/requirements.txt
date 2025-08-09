@@ -1,4 +1,4 @@
-podcastfy
+gTTS
 requests
 python-dotenv
 schedule

@@ -1,7 +1,7 @@
 import os
 import requests
 from datetime import datetime
-from podcastfy.client import generate_podcast
+from gtts import gTTS  # Replaced podcastfy with gTTS
 from dotenv import load_dotenv
 import traceback
 import xml.etree.ElementTree as ET
@@ -16,20 +16,17 @@ def get_reddit_posts(subreddit, limit=3):
     Fetch top posts from a subreddit using its RSS feed.
     """
     print(f"Fetching posts from subreddit RSS feed: r/{subreddit}")
-    # The time_filter parameter is not supported by RSS feeds.
     url = f"https://www.reddit.com/r/{subreddit}/top/.rss"
     headers = {'User-agent': 'daily-podcast-bot'}
 
     try:
         response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+        response.raise_for_status()
 
-        # Register namespace to handle Atom feeds properly
         ET.register_namespace('atom', 'http://www.w3.org/2005/Atom')
         root = ET.fromstring(response.content)
         posts = []
 
-        # Find all 'entry' tags. The namespace is required.
         for entry in root.findall('{http://www.w3.org/2005/Atom}entry')[:limit]:
             title = entry.find('{http://www.w3.org/2005/Atom}title').text
             url = entry.find('{http://www.w3.org/2005/Atom}link').get('href')
@@ -84,18 +81,12 @@ def generate_daily_podcast():
     for i, post in enumerate(posts, 1):
         transcript += f"Story #{i}: {post['title']}\n"
         if post['selftext']:
-            # Basic HTML tag stripping
             clean_text = re.sub('<[^<]+?>', ' ', post['selftext'])
-            # The content from RSS includes a lot of boilerplate. This is a basic attempt to remove it.
-            # It finds the "submitted by" link and tries to only get text after it.
             submitted_by_str = f"submitted by /u/{post['author']}"
             text_start_index = clean_text.lower().find(submitted_by_str)
             if text_start_index != -1:
                 clean_text = clean_text[text_start_index + len(submitted_by_str):]
-
-            # Further cleanup
             clean_text = clean_text.replace('[link]', '').replace('[comments]', '').strip()
-
             transcript += f"{clean_text[:500]}...\n\n"
         transcript += f"You can read more at: {post['url']}\n\n"
 
@@ -111,20 +102,19 @@ def generate_daily_podcast():
     output_file = f"daily_podcast_{datetime.now().strftime('%Y%m%d')}.mp3"
     print(f"Attempting to generate podcast audio file at: {os.path.abspath(output_file)}")
 
+    # Use gTTS to generate the podcast
     try:
-        audio_file = generate_podcast(
-            text=transcript,
-            output_file=output_file,
-            voices=os.getenv('VOICE_TYPE', 'default')
-        )
-        if audio_file and os.path.exists(audio_file):
-            print(f"SUCCESS: Podcast generated and saved at: {audio_file}")
-            return audio_file
+        tts = gTTS(text=transcript, lang='en')
+        tts.save(output_file)
+
+        if os.path.exists(output_file):
+            print(f"SUCCESS: Podcast generated and saved at: {output_file}")
+            return output_file
         else:
-            print("FAILURE: generate_podcast function did not return a valid file path or the file was not created.")
+            print("FAILURE: gTTS did not create the output file.")
             return None
     except Exception as e:
-        print(f"FATAL ERROR: An exception occurred while generating podcast: {e}")
+        print(f"FATAL ERROR: An exception occurred while generating podcast with gTTS: {e}")
         print("--- Traceback ---")
         traceback.print_exc()
         print("-----------------")
