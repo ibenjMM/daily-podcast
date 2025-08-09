@@ -1,0 +1,46 @@
+name: Generate Daily Podcast
+
+on:
+  schedule:
+    # Run every day at 8 AM UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r src/requirements.txt
+
+    - name: Install ffmpeg
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+
+    - name: Create .env file
+      run: |
+        echo "SUBREDDIT=${{ secrets.SUBREDDIT }}" > src/.env
+        echo "VOICE_TYPE=${{ secrets.VOICE_TYPE }}" >> src/.env
+
+    - name: Generate podcast
+      run: |
+        cd src
+        python generate_podcast.py
+
+    - name: Upload podcast as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: daily-podcast
+        path: src/*.mp3

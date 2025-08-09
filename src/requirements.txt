@@ -1,0 +1,4 @@
+podcastfy
+requests
+python-dotenv
+schedule
