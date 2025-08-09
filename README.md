@@ -1,54 +1,74 @@
-# Daily Podcast Generator
+# Multi-Show Podcast Generator
 
-This project automatically generates a daily podcast from top Reddit posts using the Podcastfy library.
+This project automatically generates multiple, distinct daily podcasts from Reddit posts using Google Text-to-Speech. It's designed to be highly customizable, allowing you to create different "shows" for various topics, each with its own style and voice accent.
 
 ## How it Works
 
-1. Every day at 8 AM UTC, the GitHub Action will run.
-2. It fetches the top posts from the specified subreddit.
-3. It generates a transcript from these posts.
-4. It uses Podcastfy to convert the transcript to audio.
-5. The resulting MP3 file is saved as a GitHub Action artifact.
+1.  A GitHub Action runs on a schedule or can be triggered manually.
+2.  You specify which "show" to generate.
+3.  The script reads the configuration for that show from `src/shows.json`.
+4.  It fetches the top posts from the show's specified subreddit using the RSS feed.
+5.  A conversational, human-like script is generated, including a host persona, intros, transitions, and commentary.
+6.  It uses Google Text-to-Speech (`gTTS`) to convert the transcript to an MP3 audio file.
+7.  The resulting MP3 file is saved as a GitHub Action artifact, ready for you to download.
 
-## Setup
+## Setup: Configuring Your Shows
 
-To get this project running, you need to set up repository secrets.
+All podcast configuration is done in the `src/shows.json` file. Open this file to define your different podcast shows.
 
-1. In your GitHub repository, go to `Settings` > `Secrets and variables` > `Actions`.
-2. Click on `New repository secret`.
-3. Create the following secrets:
-   - **Name:** `SUBREDDIT`
-     **Value:** The name of the subreddit you want to get posts from (e.g., `technology`).
-   - **Name:** `VOICE_TYPE`
-     **Value:** The voice to use for the podcast. You can choose from the voices available in the Podcastfy library (e.g., `default`).
+The file is a list of show objects, each with the following properties:
+-   `"name"`: The name of your podcast show (e.g., "Tech Today").
+-   `"subreddit"`: The subreddit to use as the content source (e.g., "technology").
+-   `"tts_tld"`: The Google Text-to-Speech "top-level domain", which controls the voice's accent.
+
+Here is an example configuration for three shows:
+```json
+[
+  {
+    "name": "Tech Today",
+    "subreddit": "technology",
+    "tts_tld": "com"
+  },
+  {
+    "name": "Science Weekly",
+    "subreddit": "science",
+    "tts_tld": "co.uk"
+  },
+  {
+    "name": "Business Buzz",
+    "subreddit": "business",
+    "tts_tld": "com.au"
+  }
+]
+```
+
+To add a new show, simply copy one of the objects, paste it, and change the values.
+
+### Choosing a Voice Accent (`tts_tld`)
+You can change the host's accent by changing the `tts_tld` value. Here are some popular options:
+-   `com`: Standard US English
+-   `co.uk`: British English
+-   `com.au`: Australian English
+-   `ca`: Canadian English
+-   `co.in`: Indian English
+-   `ie`: Irish English
+-   `co.za`: South African English
 
 ## Usage & Testing
 
-You can let the podcast be generated automatically on schedule, or you can trigger it manually.
+You can generate a podcast in two ways:
 
-1. In your repository, go to the `Actions` tab.
-2. You should see the "Generate Daily Podcast" workflow.
-3. Click on it, then click `Run workflow` to test it manually.
-4. Wait for the workflow to complete (this may take a few minutes).
-5. If successful, you'll see an artifact named "daily-podcast" in the workflow summary.
-6. Click on the artifact to download the generated MP3 file.
+### 1. Manual Generation (Recommended for testing)
+1.  In your repository, go to the **Actions** tab.
+2.  In the left sidebar, click on the **"Generate Daily Podcast"** workflow.
+3.  Click the **"Run workflow"** dropdown button.
+4.  You will see an input field labeled **"The name of the show to generate"**. Type the name of the show you want to generate exactly as it appears in `shows.json` (e.g., "Science Weekly").
+5.  Click the green **"Run workflow"** button.
+
+### 2. Scheduled Generation
+The workflow is scheduled to run every day at 8 AM UTC. By default, it will generate the **"Tech Today"** show. You can change this default in the `.github/workflows/daily-podcast.yml` file.
+
+After a workflow run is complete, you can download the generated MP3 file from the "Artifacts" section of the workflow summary page.
 
 ## Customization
-
-You can customize the podcast in several ways:
-
-- **Change the subreddit:** Update the `SUBREDDIT` secret in your repository settings.
-- **Change the voice:** Update the `VOICE_TYPE` secret with a different voice.
-- **Modify the transcript:** Edit the `src/generate_podcast.py` file to change the format or content of the transcript.
-
-## Set Up Distribution (Optional)
-
-To automatically upload your podcast to a hosting service (like Anchor.fm, Spotify for Podcasters, etc.), you can extend the GitHub Actions workflow.
-
-1. Get API credentials from your podcast hosting service.
-2. Add these credentials as new repository secrets.
-3. Modify the `.github/workflows/daily-podcast.yml` file to include an upload step using a relevant GitHub Action or a custom script.
-
-## Enjoy Your Automated Podcast!
-
-Your podcast will now be generated automatically every day. Enjoy your daily dose of content!
+Beyond `shows.json`, you can customize the host's personality by editing the lists of phrases (e.g., `host_intros`, `transitions`, `commentary_intros`) at the top of the `generate_daily_podcast` function in `src/generate_podcast.py`.

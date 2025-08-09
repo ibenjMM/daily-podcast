@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Tech Today",
+    "subreddit": "technology",
+    "tts_tld": "com"
+  },
+  {
+    "name": "Science Weekly",
+    "subreddit": "science",
+    "tts_tld": "co.uk"
+  },
+  {
+    "name": "Business Buzz",
+    "subreddit": "business",
+    "tts_tld": "com.au"
+  }
+]

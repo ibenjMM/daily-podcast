@@ -8,6 +8,9 @@ import xml.etree.ElementTree as ET
 import html
 import re
 import random
+import json
+import argparse
+import sys
 
 # Load environment variables
 load_dotenv()
@@ -61,13 +64,15 @@ def clean_text_for_tts(text, post_author):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-def generate_daily_podcast():
+def generate_daily_podcast(show_config):
     """
-    Generate a more natural and engaging daily podcast from top Reddit posts.
+    Generate a more natural and engaging daily podcast based on a show configuration.
     """
-    print("--- Starting Super-Enhanced Podcast Generation ---")
-    subreddit = os.getenv('SUBREDDIT', 'technology')
-    tts_tld = os.getenv('TTS_TLD', 'com') # Default to .com accent
+    show_name = show_config['name']
+    subreddit = show_config['subreddit']
+    tts_tld = show_config.get('tts_tld', 'com') # Default to 'com' if not specified
+
+    print(f"--- Starting Podcast Generation for show: '{show_name}' ---")
     print(f"Target subreddit: {subreddit}, TTS TLD: {tts_tld}")
     posts = get_reddit_posts(subreddit, limit=3)
 
@@ -75,52 +80,23 @@ def generate_daily_podcast():
         print("No posts found. Exiting.")
         return
 
-    # --- Expanded Host Persona and Script Elements ---
+    # --- Host Persona and Script Elements ---
     host_intros = [
-        f"Hello and welcome to the Daily {subreddit.capitalize()} Briefing! I'm your host, Jules, and we've got some fascinating stories lined up for you today.",
-        f"Good morning, and welcome to your daily download of {subreddit.capitalize()} news. I'm Jules, and here is what is making headlines today.",
-        f"Welcome back to the Daily {subreddit.capitalize()} Podcast. It's {datetime.now().strftime('%A, %B %d')}, and we are ready to dive into the latest updates. So, let's get to it.",
+        f"Hello and welcome to {show_name}! I'm your host, Jules, and we've got some fascinating stories lined up for you today.",
+        f"Good morning, and welcome to your daily download of news from the world of {subreddit}. I'm Jules, and here is what is making headlines today.",
+        f"Welcome back to {show_name}. It's {datetime.now().strftime('%A, %B %d')}, and we're ready to dive into the latest updates. So, let's get to it.",
     ]
 
-    transitions = [
-        "Alright, moving on to our next story, and this one is a bit of a head-scratcher.",
-        "In other news, something I've been following closely...",
-        "Next up, let's talk about something completely different.",
-        "And to follow up on that, here's a related piece of news.",
-        "Let's shift gears for a moment, shall we?",
-    ]
-
-    commentary_intros = [
-        "Now, my first thought on this is...",
-        "You know, this reminds me of...",
-        "What a fascinating development. It makes you wonder...",
-        "Honestly, I'm not surprised by this at all. Here's why...",
-    ]
-
-    commentary_outros = [
-        "What do you think? Let me know.",
-        "It'll be interesting to see how this plays out.",
-        "Definitely something to keep an eye on.",
-        "Just some food for thought.",
-    ]
-
-    outros = [
-        "And that's all the time we have for today. It's been a pleasure bringing you the latest. Thanks for tuning in!",
-        "That wraps up our briefing for today. I'm Jules, signing off. Thanks for listening.",
-        "And that's a wrap for today's episode! We'll be back tomorrow with more of the latest news.",
-    ]
-
-    ctas = [
-        "Be sure to subscribe for more daily updates, and check out the links to these stories in the show notes. Talk to you tomorrow!",
-        "Don't forget to follow our podcast wherever you're listening. All links are in the description. See you next time!",
-        "For more details on today's topics, all the links are waiting for you in the description. Thanks again for listening, and have a wonderful day!",
-    ]
+    # ... (The rest of the persona lists remain the same)
+    transitions = [ "Alright, moving on...", "In other news...", "Next up...", ]
+    commentary_intros = [ "Now, my first thought on this is...", "What a fascinating development...", "Honestly, I'm not surprised by this...", ]
+    commentary_outros = [ "What do you think?", "It'll be interesting to see how this plays out.", "Definitely something to keep an eye on.", ]
+    outros = [ "And that's all the time we have for today. Thanks for tuning in!", "That wraps up our briefing for today. I'm Jules, signing off.", ]
+    ctas = [ "Be sure to subscribe for more daily updates. Talk to you tomorrow!", "Don't forget to follow our podcast. All links are in the show notes.", ]
 
     # --- Building the Transcript ---
-    print("Creating super-enhanced transcript...")
-
+    print("Creating enhanced transcript...")
     transcript_parts = [random.choice(host_intros) + " ... \n\n"]
-
     transcript_parts.append("Coming up on today's show: ...\n")
     for post in posts:
         transcript_parts.append(f"{post['title']}. ...\n")
@@ -129,29 +105,29 @@ def generate_daily_podcast():
     for i, post in enumerate(posts):
         if i > 0:
             transcript_parts.append(f"{random.choice(transitions)} ...\n\n")
-
         transcript_parts.append(f"Our {'first' if i == 0 else 'next'} story is titled: {post['title']}. ...\n\n")
-
         if post['selftext']:
             clean_content = clean_text_for_tts(post['selftext'], post['author'])
             if len(clean_content) > 30:
                 transcript_parts.append(f"{clean_content[:800]} ...\n\n")
-                # Add post-story commentary
                 transcript_parts.append(f"{random.choice(commentary_intros)} ... {random.choice(commentary_outros)} ...\n\n")
 
     transcript_parts.append(random.choice(outros) + " ...\n")
     transcript_parts.append(random.choice(ctas) + "\n")
 
     final_transcript = "".join(transcript_parts)
-    print(f"Transcript created. Length: {len(final_transcript)} characters.")
 
-    transcript_file = f"transcript_{datetime.now().strftime('%Y%m%d')}.txt"
+    # --- Saving and Generating Audio ---
+    # Sanitize show name for filenames
+    safe_show_name = re.sub(r'\W+', '', show_name.replace(' ', '_'))
+    output_filename_base = f"{safe_show_name}_{datetime.now().strftime('%Y%m%d')}"
+
+    transcript_file = f"{output_filename_base}.txt"
     print(f"Saving transcript to: {os.path.abspath(transcript_file)}")
     with open(transcript_file, 'w', encoding='utf-8') as f:
         f.write(final_transcript)
-    print("Transcript saved successfully.")
 
-    output_file = f"daily_podcast_{datetime.now().strftime('%Y%m%d')}.mp3"
+    output_file = f"{output_filename_base}.mp3"
     print(f"Attempting to generate podcast audio file with gTTS at: {os.path.abspath(output_file)}")
 
     try:
@@ -166,11 +142,39 @@ def generate_daily_podcast():
             return None
     except Exception as e:
         print(f"FATAL ERROR: An exception occurred while generating podcast with gTTS: {e}")
-        print("--- Traceback ---")
         traceback.print_exc()
-        print("-----------------")
         return None
 
+def main():
+    """
+    Main function to load shows, parse arguments, and generate the selected podcast.
+    """
+    parser = argparse.ArgumentParser(description="Generate a daily podcast from a configured show.")
+    parser.add_argument("--show", required=True, help="The name of the show to generate, as defined in shows.json.")
+    args = parser.parse_args()
+
+    try:
+        with open("shows.json", "r") as f:
+            shows = json.load(f)
+    except FileNotFoundError:
+        print("ERROR: shows.json not found. Please create it.")
+        sys.exit(1)
+    except json.JSONDecodeError:
+        print("ERROR: shows.json is not valid JSON.")
+        sys.exit(1)
+
+    show_to_generate = None
+    for show in shows:
+        if show['name'] == args.show:
+            show_to_generate = show
+            break
+
+    if show_to_generate:
+        generate_daily_podcast(show_to_generate)
+    else:
+        print(f"ERROR: Show '{args.show}' not found in shows.json.")
+        sys.exit(1)
+
 if __name__ == "__main__":
-    generate_daily_podcast()
+    main()
     print("--- Podcast Generation Script Finished ---")

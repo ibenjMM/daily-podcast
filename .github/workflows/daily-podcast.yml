@@ -2,9 +2,14 @@ name: Generate Daily Podcast
 
 on:
   schedule:
-    # Run every day at 8 AM UTC
+    # Run every day at 8 AM UTC. This will run the default show.
     - cron: '0 8 * * *'
   workflow_dispatch:
+    inputs:
+      show_name:
+        description: 'The name of the show to generate (must match a name in shows.json)'
+        required: true
+        default: 'Tech Today'
 
 jobs:
   build:
@@ -29,18 +34,21 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ffmpeg
 
-    - name: Create .env file
+    - name: Set Show Name
+      id: set_show
       run: |
-        echo "SUBREDDIT=${{ secrets.SUBREDDIT }}" > src/.env
-        echo "VOICE_TYPE=${{ secrets.VOICE_TYPE }}" >> src/.env
+        SHOW_NAME="${{ github.event.inputs.show_name || 'Tech Today' }}"
+        echo "SHOW_NAME=$SHOW_NAME" >> $GITHUB_ENV
+        SAFE_NAME=$(echo "$SHOW_NAME" | tr ' ' '-')
+        echo "SAFE_SHOW_NAME=podcast-$SAFE_NAME" >> $GITHUB_ENV
 
     - name: Generate podcast
       run: |
         cd src
-        python generate_podcast.py
+        python generate_podcast.py --show "${{ env.SHOW_NAME }}"
 
     - name: Upload podcast as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: daily-podcast
+        name: ${{ env.SAFE_SHOW_NAME }}
         path: src/*.mp3
