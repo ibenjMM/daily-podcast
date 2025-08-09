@@ -39,9 +39,6 @@ jobs:
         cd src
         python generate_podcast.py
 
-    - name: Debug: List files in workspace
-      run: ls -lR
-
     - name: Upload podcast as artifact
       uses: actions/upload-artifact@v4
       with:
